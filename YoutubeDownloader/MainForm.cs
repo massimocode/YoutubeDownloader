@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Drawing;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using MediaToolkit;
@@ -27,51 +28,69 @@ namespace YoutubeDownloader
                 MessageBox.Show("Please enter a URL to download");
                 return;
             }
-            var audioOnly = chk_audioOnly.Checked;
             var url = txt_url.Text;
             txt_url.Text = "";
-            Log($"Resolving {url}...");
             try
             {
-                var video = await Task.Run(() => YouTube.Default.GetVideo(url));
-                Log($"Found video {video.FullName} - Downloading...");
-                var savedFilePath = Path.Combine(DesktopPath, video.FullName);
-                if (audioOnly)
+                Log($"Resolving {url}");
+                if (chk_audioOnly.Checked)
                 {
-                    savedFilePath = Path.ChangeExtension(savedFilePath, ".temp");
+                    await DownloadAudio(url);
                 }
-                File.WriteAllBytes(savedFilePath, await video.GetBytesAsync());
-                Log($"Successfully downloaded {video.FullName}");
-                if (audioOnly)
+                else
                 {
-                    Log($"Converting {video.FullName} to MP3");
-                    await ConvertToMp3Async(savedFilePath);
-                    Log($"Successfully converted {video.FullName} to MP3");
+                    await DownloadVideo(url);
                 }
             }
-            catch (Exception error)
+            catch (Exception ex)
             {
-                Log("An error occurred: " + error.Message);
+                Log($"An error occurred downloading {url}");
+                Log(ex.Message);
+            }
+        }
+
+        private async Task DownloadVideo(string url)
+        {
+            var video = await YouTube.Default.GetVideoAsync(url);
+            Log($"Found video {video.FullName} - Downloading...");
+            File.WriteAllBytes(Path.Combine(DesktopPath, video.FullName), await video.GetBytesAsync());
+            Log($"Successfully downloaded {video.FullName}");
+        }
+
+        private async Task DownloadAudio(string url)
+        {
+            var videos = (await YouTube.Default.GetAllVideosAsync(url)).ToList();
+            var audio = videos.FirstOrDefault(x => x.AdaptiveKind == AdaptiveKind.Audio);
+            if (audio != null)
+            {
+                Log($"Found audio {audio.FullName} - Downloading...");
+                File.WriteAllBytes(Path.Combine(DesktopPath, audio.FullName), await audio.GetBytesAsync());
+                Log($"Successfully downloaded {audio.FullName}");
+            }
+            else
+            {
+                var video = videos.First();
+                Log($"Couldn't find any audio streams. Downloading {video.FullName} for conversion...");
+                var temporaryFilePath = Path.ChangeExtension(Path.Combine(DesktopPath, video.FullName), ".temp");
+                File.WriteAllBytes(temporaryFilePath, await video.GetBytesAsync());
+                Log($"Successfully downloaded {video.FullName}. Converting {video.FullName} to MP3...");
+                await Task.Run(() =>
+                {
+                    var inputFile = new MediaFile { Filename = temporaryFilePath };
+                    var outputFile = new MediaFile { Filename = Path.ChangeExtension(temporaryFilePath, ".mp3") };
+                    using (var engine = new Engine())
+                    {
+                        engine.Convert(inputFile, outputFile);
+                    }
+                    File.Delete(temporaryFilePath);
+                });
+                Log($"Successfully converted {video.FullName} to MP3");
             }
         }
 
         private void Log(string text)
         {
             txt_progress.AppendText(text + Environment.NewLine);
-        }
-
-        private Task ConvertToMp3Async(string inputFileName)
-        {
-            return Task.Run(() =>
-            {
-                var inputFile = new MediaFile { Filename = inputFileName };
-                var outputFile = new MediaFile { Filename = Path.ChangeExtension(inputFileName, ".mp3") };
-                using (var engine = new Engine())
-                {
-                    engine.Convert(inputFile, outputFile);
-                }
-                File.Delete(inputFileName);
-            });
         }
     }
 }
