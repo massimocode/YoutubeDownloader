@@ -52,9 +52,9 @@ namespace YoutubeDownloader
         private async Task DownloadVideo(string url)
         {
             var video = await YouTube.Default.GetVideoAsync(url);
-            Log($"Found video {video.FullName} - Downloading...");
+            Log($"Found video for {video.Title} - Downloading...");
             File.WriteAllBytes(Path.Combine(DesktopPath, video.FullName), await video.GetBytesAsync());
-            Log($"Successfully downloaded {video.FullName}");
+            Log($"Successfully downloaded video for {video.Title}");
         }
 
         private async Task DownloadAudio(string url)
@@ -63,17 +63,22 @@ namespace YoutubeDownloader
             var audio = videos.FirstOrDefault(x => x.AdaptiveKind == AdaptiveKind.Audio);
             if (audio != null)
             {
-                Log($"Found audio {audio.FullName} - Downloading...");
-                File.WriteAllBytes(Path.Combine(DesktopPath, audio.FullName), await audio.GetBytesAsync());
-                Log($"Successfully downloaded {audio.FullName}");
+                Log($"Found audio for {audio.Title} - Downloading...");
+                var outputPath = audio.FullName;
+                if (audio.Format == VideoFormat.Mp4)
+                {
+                    outputPath = Path.ChangeExtension(outputPath, ".m4a");
+                }
+                File.WriteAllBytes(Path.Combine(DesktopPath, outputPath), await audio.GetBytesAsync());
+                Log($"Successfully downloaded audio for {audio.Title}");
             }
             else
             {
                 var video = videos.First();
-                Log($"Couldn't find any audio streams. Downloading {video.FullName} for conversion...");
+                Log($"Couldn't find any audio streams for {video.Title}. Downloading {video.Format} format for conversion...");
                 var temporaryFilePath = Path.ChangeExtension(Path.Combine(DesktopPath, video.FullName), ".temp");
                 File.WriteAllBytes(temporaryFilePath, await video.GetBytesAsync());
-                Log($"Successfully downloaded {video.FullName}. Converting {video.FullName} to MP3...");
+                Log($"Converting {video.Title} to MP3");
                 await Task.Run(() =>
                 {
                     var inputFile = new MediaFile { Filename = temporaryFilePath };
@@ -84,7 +89,7 @@ namespace YoutubeDownloader
                     }
                     File.Delete(temporaryFilePath);
                 });
-                Log($"Successfully converted {video.FullName} to MP3");
+                Log($"Successfully downloaded and converted {video.Title} to MP3");
             }
         }
 
