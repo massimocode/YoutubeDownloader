@@ -51,8 +51,17 @@ namespace YoutubeDownloader
 
         private async Task DownloadVideo(string url)
         {
-            var video = await YouTube.Default.GetVideoAsync(url);
-            Log($"Found video for {video.Title} - Downloading...");
+            var videos = (await YouTube.Default.GetAllVideosAsync(url)).ToList();
+            var video = videos.FirstOrDefault(x => x.Format == VideoFormat.Mp4);
+            if (video == null)
+            {
+                video = videos.First();
+                Log($"Could not find MP4 for {video.Title} - Downloading {video.Format} instead...");
+            }
+            else
+            {
+                Log($"Found video for {video.Title} - Downloading...");
+            }
             File.WriteAllBytes(Path.Combine(DesktopPath, video.FullName), await video.GetBytesAsync());
             Log($"Successfully downloaded video for {video.Title}");
         }
