@@ -1,4 +1,4 @@
-﻿& "C:\Program Files (x86)\MSBuild\14.0\Bin\MSBuild.exe" YoutubeDownloader.sln /p:Configuration=Release /t:Clean,Build
+﻿& "C:\Program Files (x86)\Microsoft Visual Studio\2017\Professional\MSBuild\15.0\Bin\MSBuild.exe" YoutubeDownloader.sln /p:Configuration=Release /t:Clean,Build
 if (-Not (Test-Path -Path "built")) {
     New-Item -ItemType directory -Path "built" | Out-Null
 }
