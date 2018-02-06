@@ -54,6 +54,10 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="DownloadManager.cs" />
+    <Compile Include="DownloadProgress.cs" />
+    <Compile Include="DownloadRequest.cs" />
+    <Compile Include="IDownloadManager.cs" />
     <Compile Include="MainForm.cs">
       <SubType>Form</SubType>
     </Compile>

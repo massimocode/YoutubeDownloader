@@ -31,8 +31,9 @@
             this.label1 = new System.Windows.Forms.Label();
             this.txt_url = new System.Windows.Forms.TextBox();
             this.btn_download = new System.Windows.Forms.Button();
-            this.txt_progress = new System.Windows.Forms.TextBox();
             this.chk_audioOnly = new System.Windows.Forms.CheckBox();
+            this.dataGridView = new System.Windows.Forms.DataGridView();
+            ((System.ComponentModel.ISupportInitialize)(this.dataGridView)).BeginInit();
             this.SuspendLayout();
             // 
             // label1
@@ -61,15 +62,6 @@
             this.btn_download.UseVisualStyleBackColor = true;
             this.btn_download.Click += new System.EventHandler(this.btn_download_Click);
             // 
-            // txt_progress
-            // 
-            this.txt_progress.Location = new System.Drawing.Point(14, 44);
-            this.txt_progress.Multiline = true;
-            this.txt_progress.Name = "txt_progress";
-            this.txt_progress.ReadOnly = true;
-            this.txt_progress.Size = new System.Drawing.Size(509, 184);
-            this.txt_progress.TabIndex = 3;
-            // 
             // chk_audioOnly
             // 
             this.chk_audioOnly.AutoSize = true;
@@ -80,18 +72,30 @@
             this.chk_audioOnly.Text = "Audio only";
             this.chk_audioOnly.UseVisualStyleBackColor = true;
             // 
+            // dataGridView
+            // 
+            this.dataGridView.AllowUserToAddRows = false;
+            this.dataGridView.AllowUserToDeleteRows = false;
+            this.dataGridView.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+            this.dataGridView.Location = new System.Drawing.Point(14, 46);
+            this.dataGridView.Name = "dataGridView";
+            this.dataGridView.ReadOnly = true;
+            this.dataGridView.Size = new System.Drawing.Size(676, 323);
+            this.dataGridView.TabIndex = 5;
+            // 
             // MainForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(535, 242);
+            this.ClientSize = new System.Drawing.Size(704, 381);
+            this.Controls.Add(this.dataGridView);
             this.Controls.Add(this.chk_audioOnly);
-            this.Controls.Add(this.txt_progress);
             this.Controls.Add(this.btn_download);
             this.Controls.Add(this.txt_url);
             this.Controls.Add(this.label1);
             this.Name = "MainForm";
             this.Text = "YouTube Downloader";
+            ((System.ComponentModel.ISupportInitialize)(this.dataGridView)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -102,8 +106,8 @@
         private System.Windows.Forms.Label label1;
         private System.Windows.Forms.TextBox txt_url;
         private System.Windows.Forms.Button btn_download;
-        private System.Windows.Forms.TextBox txt_progress;
         private System.Windows.Forms.CheckBox chk_audioOnly;
+        private System.Windows.Forms.DataGridView dataGridView;
     }
 }
 

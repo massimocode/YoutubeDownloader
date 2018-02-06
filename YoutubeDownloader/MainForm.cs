@@ -1,110 +1,118 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel;
 using System.Drawing;
-using System.IO;
 using System.Linq;
-using System.Threading.Tasks;
 using System.Windows.Forms;
-using MediaToolkit;
-using MediaToolkit.Model;
-using VideoLibrary;
 
 namespace YoutubeDownloader
 {
     public partial class MainForm : Form
     {
         static readonly string DesktopPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+        private readonly IDownloadManager _downloadManager;
+        private IList<Download> downloads = new BindingList<Download>();
 
         public MainForm()
         {
             InitializeComponent();
             Icon = new Icon(typeof(MainForm), "icon.ico");
             Text = $"YouTube Downloader - {typeof(MainForm).Assembly.GetName().Version}";
+            dataGridView.AutoGenerateColumns = true;
+            dataGridView.DataSource = downloads;
+            dataGridView.Columns["Status"].Visible = false;
+            dataGridView.Columns["PercentDownloaded"].Visible = false;
+            dataGridView.Columns["StatusText"].HeaderText = "Status";
+            dataGridView.Columns["Title"].Width = 433;
+            _downloadManager = new DownloadManager();
         }
 
         private async void btn_download_Click(object sender, EventArgs e)
         {
-            if (string.IsNullOrWhiteSpace(txt_url.Text))
+            var url = txt_url.Text;
+            txt_url.Text = "";
+            if (string.IsNullOrWhiteSpace(url))
             {
                 MessageBox.Show("Please enter a URL to download");
                 return;
             }
-            var url = txt_url.Text;
-            txt_url.Text = "";
+            if (downloads.Any(x => x.Url == url && x.Status != Status.Failed))
+            {
+                MessageBox.Show("This download is already in the queue");
+                return;
+            }
+
+            var download = new Download { Url = url };
+            downloads.Add(download);
+            dataGridView.Refresh();
+
             try
             {
-                Log($"Resolving {url}");
-                if (chk_audioOnly.Checked)
+                await _downloadManager.DownloadAsync(new DownloadRequest
                 {
-                    await DownloadAudio(url);
+                    Url = url,
+                    IsAudioOnly = chk_audioOnly.Checked,
+                    DestinationFolder = DesktopPath
+                }, new Progress<DownloadProgress>(progress =>
+                {
+                    if (progress.Title != null && download.Title != progress.Title)
+                    {
+                        download.Title = progress.Title;
+                        dataGridView.Refresh();
+                    }
+                    if (progress.Status != null && download.Status != progress.Status)
+                    {
+                        download.Status = progress.Status.Value;
+                        dataGridView.Refresh();
+                    }
+                    if (progress.PercentDownloaded != null && download.PercentDownloaded != progress.PercentDownloaded)
+                    {
+                        download.PercentDownloaded = progress.PercentDownloaded.Value;
+                        dataGridView.Refresh();
+                    }
+                }));
+                download.Status = Status.Complete;
+                dataGridView.Refresh();
+            }
+            catch (Exception exception)
+            {
+                MessageBox.Show($"Error downloading {url}. {exception.Message}");
+                download.Status = Status.Failed;
+                dataGridView.Refresh();
+            }
+        }
+    }
+
+    public class Download
+    {
+        public string Url { get; set; }
+        public string Title { get; set; }
+        public Status Status { get; set; }
+        public int PercentDownloaded { get; set; }
+        public string StatusText
+        {
+            get
+            {
+                if (Status == Status.Downloading)
+                {
+                    return $"Downloading - {PercentDownloaded}%";
                 }
                 else
                 {
-                    await DownloadVideo(url);
+                    return Status.ToString();
                 }
             }
-            catch (Exception ex)
-            {
-                Log($"An error occurred downloading {url}");
-                Log(ex.Message);
-            }
         }
 
-        private async Task DownloadVideo(string url)
-        {
-            var videos = (await YouTube.Default.GetAllVideosAsync(url)).ToList();
-            var video = videos.FirstOrDefault(x => x.Format == VideoFormat.Mp4);
-            if (video == null)
-            {
-                video = videos.First();
-                Log($"Could not find MP4 for {video.Title} - Downloading {video.Format} instead...");
-            }
-            else
-            {
-                Log($"Found video for {video.Title} - Downloading...");
-            }
-            File.WriteAllBytes(Path.Combine(DesktopPath, video.FullName), await video.GetBytesAsync());
-            Log($"Successfully downloaded video for {video.Title}");
-        }
+    }
 
-        private async Task DownloadAudio(string url)
-        {
-            var videos = (await YouTube.Default.GetAllVideosAsync(url)).ToList();
-            var audio = videos.FirstOrDefault(x => x.AdaptiveKind == AdaptiveKind.Audio);
-            if (audio != null)
-            {
-                Log($"Found audio for {audio.Title} - Downloading...");
-                var outputPath = audio.FullName;
-                if (audio.Format == VideoFormat.Mp4)
-                {
-                    outputPath = Path.ChangeExtension(outputPath, ".m4a");
-                }
-                File.WriteAllBytes(Path.Combine(DesktopPath, outputPath), await audio.GetBytesAsync());
-                Log($"Successfully downloaded audio for {audio.Title}");
-            }
-            else
-            {
-                var video = videos.First();
-                Log($"Couldn't find any audio streams for {video.Title}. Downloading {video.Format} format for conversion...");
-                var temporaryFilePath = Path.ChangeExtension(Path.Combine(DesktopPath, video.FullName), ".temp");
-                File.WriteAllBytes(temporaryFilePath, await video.GetBytesAsync());
-                Log($"Converting {video.Title} to MP3");
-                await Task.Run(() =>
-                {
-                    var inputFile = new MediaFile { Filename = temporaryFilePath };
-                    var outputFile = new MediaFile { Filename = Path.ChangeExtension(temporaryFilePath, ".mp3") };
-                    using (var engine = new Engine())
-                    {
-                        engine.Convert(inputFile, outputFile);
-                    }
-                    File.Delete(temporaryFilePath);
-                });
-                Log($"Successfully downloaded and converted {video.Title} to MP3");
-            }
-        }
-
-        private void Log(string text)
-        {
-            txt_progress.AppendText(text + Environment.NewLine);
-        }
+    public enum Status
+    {
+        Queued,
+        Downloading,
+        Converting,
+        Complete,
+        Failed,
+        Duplicate
     }
 }
