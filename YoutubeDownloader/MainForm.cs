@@ -19,11 +19,15 @@ namespace YoutubeDownloader
             Icon = new Icon(typeof(MainForm), "icon.ico");
             Text = $"YouTube Downloader - {typeof(MainForm).Assembly.GetName().Version}";
             dataGridView.AutoGenerateColumns = true;
+            dataGridView.RowHeadersVisible = false;
             dataGridView.DataSource = downloads;
+            dataGridView.Columns["Url"].AutoSizeMode = DataGridViewAutoSizeColumnMode.DisplayedCells;
+            dataGridView.Columns["Type"].AutoSizeMode = DataGridViewAutoSizeColumnMode.DisplayedCells;
+            dataGridView.Columns["Title"].AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
             dataGridView.Columns["Status"].Visible = false;
             dataGridView.Columns["PercentDownloaded"].Visible = false;
             dataGridView.Columns["StatusText"].HeaderText = "Status";
-            dataGridView.Columns["Title"].Width = 433;
+            dataGridView.Columns["StatusText"].AutoSizeMode = DataGridViewAutoSizeColumnMode.DisplayedCells;
             _downloadManager = new DownloadManager();
         }
 
@@ -36,13 +40,15 @@ namespace YoutubeDownloader
                 MessageBox.Show("Please enter a URL to download");
                 return;
             }
-            if (downloads.Any(x => x.Url == url && x.Status != Status.Failed))
+            var isAudioOnly = chk_audioOnly.Checked;
+            var downloadType = isAudioOnly ? DownloadType.Audio : DownloadType.Video;
+            if (downloads.Any(x => x.Url == url && x.Type == downloadType && x.Status != Status.Failed))
             {
                 MessageBox.Show("This download is already in the queue");
                 return;
             }
 
-            var download = new Download { Url = url };
+            var download = new Download { Url = url, Type = downloadType };
             downloads.Add(download);
             dataGridView.Refresh();
 
@@ -51,7 +57,7 @@ namespace YoutubeDownloader
                 await _downloadManager.DownloadAsync(new DownloadRequest
                 {
                     Url = url,
-                    IsAudioOnly = chk_audioOnly.Checked,
+                    IsAudioOnly = isAudioOnly,
                     DestinationFolder = DesktopPath
                 }, new Progress<DownloadProgress>(progress =>
                 {
@@ -81,38 +87,5 @@ namespace YoutubeDownloader
                 dataGridView.Refresh();
             }
         }
-    }
-
-    public class Download
-    {
-        public string Url { get; set; }
-        public string Title { get; set; }
-        public Status Status { get; set; }
-        public int PercentDownloaded { get; set; }
-        public string StatusText
-        {
-            get
-            {
-                if (Status == Status.Downloading)
-                {
-                    return $"Downloading - {PercentDownloaded}%";
-                }
-                else
-                {
-                    return Status.ToString();
-                }
-            }
-        }
-
-    }
-
-    public enum Status
-    {
-        Queued,
-        Downloading,
-        Converting,
-        Complete,
-        Failed,
-        Duplicate
     }
 }
